@@ -45,4 +45,4 @@ async def send(interaction: discord.Interaction, user_token: str, channel_ids: s
     await interaction.followup.send(result)
 
 # Nhớ thay bằng token bot thật
-client.run("YOUR_BOT_TOKEN")
+client.run("MTM3MDYzNTMwMTk1Njg4MjU2Mw.GLe_PV.G1tf4U3_-x4EuyeAZGpIsKCtDnReEwHU8860qc")
