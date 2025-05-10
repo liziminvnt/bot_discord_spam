@@ -1,44 +1,46 @@
 import discord
-from discord.ext import commands
+from discord import app_commands
 import requests
 
-intents = discord.Intents.default()
-bot = commands.Bot(command_prefix='/', intents=intents)
+class MyClient(discord.Client):
+    def __init__(self):
+        intents = discord.Intents.default()
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
 
-@bot.event
-async def on_ready():
-    print(f'Bot đang chạy: {bot.user}')
+    async def on_ready(self):
+        await self.tree.sync()
+        print(f"Bot đã đăng nhập: {self.user}")
 
-@bot.command()
-async def send(ctx, user_token: str, *args):
-    try:
-        if '--' not in args:
-            await ctx.send("Thiếu dấu `--` để phân cách kênh và tin nhắn.")
-            return
+client = MyClient()
 
-        split_index = args.index('--')
-        channel_ids = args[:split_index]
-        message = ' '.join(args[split_index + 1:])
+@client.tree.command(name="send", description="Gửi tin nhắn đến các channel bằng user token")
+@app_commands.describe(
+    token="User token",
+    channels="Danh sách ID channel cách nhau bởi khoảng trắng",
+    content="Nội dung tin nhắn cần gửi"
+)
+async def send(interaction: discord.Interaction, token: str, channels: str, content: str):
+    await interaction.response.defer()
+    
+    headers = {
+        "Authorization": token,
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0"
+    }
 
-        headers = {
-            'Authorization': user_token,
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0'
-        }
+    channel_ids = channels.split()
+    for cid in channel_ids:
+        url = f"https://discord.com/api/v9/channels/{cid}/messages"
+        payload = {"content": content}
+        r = requests.post(url, headers=headers, json=payload)
 
-        for channel_id in channel_ids:
-            url = f"https://discord.com/api/v9/channels/{channel_id}/messages"
-            payload = {"content": message}
-            response = requests.post(url, headers=headers, json=payload)
+        if r.status_code == 200:
+            await interaction.followup.send(f"✅ Gửi thành công tới `{cid}`")
+        elif r.status_code == 429:
+            retry_after = r.json().get("retry_after", 5)
+            await interaction.followup.send(f"⏳ Rate limit! Đợi {retry_after} giây cho kênh `{cid}`")
+        else:
+            await interaction.followup.send(f"❌ Lỗi gửi `{cid}`: {r.status_code} - {r.text}")
 
-            if response.status_code == 200:
-                await ctx.send(f"Đã gửi tới {channel_id}")
-            elif response.status_code == 429:
-                retry = response.json().get("retry_after", 10)
-                await ctx.send(f"Rate limited, đợi {retry} giây")
-            else:
-                await ctx.send(f"Lỗi gửi {channel_id}: {response.status_code} - {response.text}")
-    except Exception as e:
-        await ctx.send(f"Lỗi: {e}")
-
-bot.run("YOUR_BOT_TOKEN_HERE")  # <-- Thay bằng Bot Token thật
+client.run("YOUR_BOT_TOKEN_HERE")
