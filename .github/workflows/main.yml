@@ -1,0 +1,27 @@
+name: Run bot.py every 15 minutes
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # chạy mỗi 15 phút
+  workflow_dispatch:        # có thể bấm nút "Run workflow" thủ công
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'  # Chọn phiên bản phù hợp với bot.py
+
+      - name: Install dependencies (nếu có)
+        run: |
+          pip install -r requirements.txt || true  # nếu bạn có file này
+
+      - name: Run bot
+        run: |
+          python bot.py
