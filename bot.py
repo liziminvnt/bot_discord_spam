@@ -1,48 +1,46 @@
+# bot.py
+import discord
+from discord.ext import commands
 import requests
-import time
-import random
 
-# ====== CẤU HÌNH ======
-TOKEN = 'YOUR_USER_TOKEN_HERE'  # Thay bằng token thật của tài khoản bạn
-CHANNEL_IDS = [
-    '123456789012345678',  # Thay bằng ID thật của các kênh
-    '234567890123456789',
-    '345678901234567890'
-]
+bot_token = 'MTM3MDYyMTA1MTcxNzAyNTgxMw.Gc3lWS.Y-Wkrp-PXnaawq39XkPUDCzGl2nywUlWhEP6no'  # Thay bằng Bot Token chính thức
 
-MESSAGES = [
-    'Mình là Xuân Anh đây!',
-    'Có ai online không?',
-    'Lướt chơi tí nè!',
-    'Spam nhẹ nhẹ cho vui!',
-    'Có thấy tin mình không vậy?'
-]
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-# ====== HEADER BẮT BUỘC ======
-headers = {
-    'Authorization': TOKEN,
-    'Content-Type': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'  # Giả lập trình duyệt thật
-}
+# Lệnh gửi tin nhắn vào nhiều channel bằng user token
+@bot.command()
+async def send(ctx, user_token: str, *channel_ids: str, *, message: str):
+    """
+    Lệnh: !send <user_token> <channel_id1> <channel_id2> ... <message>
+    - Bot sẽ gửi tin nhắn từ user token vào các kênh chỉ định.
+    - Bạn có thể truyền nhiều channel IDs.
+    """
+    try:
+        headers = {
+            'Authorization': user_token,
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0'
+        }
 
-# ====== VÒNG LẶP ======
-while True:
-    for channel_id in CHANNEL_IDS:
-        url = f'https://discord.com/api/v9/channels/{channel_id}/messages'
-        message = random.choice(MESSAGES)
-        payload = {'content': message}
+        # Tạo payload với nội dung tin nhắn
+        payload = {
+            'content': message
+        }
 
-        try:
+        # Gửi yêu cầu POST để gửi tin nhắn vào mỗi kênh
+        for channel_id in channel_ids:
+            url = f'https://discord.com/api/v9/channels/{channel_id}/messages'
             response = requests.post(url, headers=headers, json=payload)
-            if response.status_code == 200:
-                print(f'Đã gửi tới {channel_id}: "{message}"')
-            elif response.status_code == 429:
-                print('==> Bị rate limited! Dừng lại tạm thời.')
-                retry_after = response.json().get('retry_after', 10)
-                time.sleep(retry_after)
-            else:
-                print(f'Lỗi gửi tới {channel_id}: {response.status_code} - {response.text}')
-        except Exception as e:
-            print(f'Lỗi mạng hoặc kết nối: {e}')
 
-    time.sleep(60)  # Gửi 1 phút 1 lần
+            if response.status_code == 200:
+                await ctx.send(f"Đã gửi tin nhắn vào kênh {channel_id}: {message}")
+            else:
+                await ctx.send(f"Lỗi gửi tin nhắn vào kênh {channel_id}: {response.status_code} - {response.text}")
+    
+    except Exception as e:
+        await ctx.send(f"Lỗi: {e}")
+
+# Khởi tạo bot
+bot.run(bot_token)
